@@ -1,0 +1,255 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"><title>分布式-分布式锁的实现 | 知识是海洋</title><meta name="keywords" content="面试,分布式"><meta name="author" content="caicai"><meta name="copyright" content="caicai"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="什么是分布式锁说到Redis，我们第一想到的功能就是可以缓存数据，除此之外，Redis因为单进程、性能高的特点，它还经常被用于做分布式锁。 分布式锁，顾名思义，就是分布式项目开发中用到的锁，可以用来控制分布式系统之间同步访问共享资源，一般来说，分布式锁需要满足的特性有这么几点：  1、互斥性：在任何时刻，对于同一条数据，只有一台应用可以获取到分布式锁； 2、高可用性：在分布式场景下，一小部分服务器">
+<meta property="og:type" content="article">
+<meta property="og:title" content="分布式-分布式锁的实现">
+<meta property="og:url" content="http://cyd217.github.io/2022/11/01/%E5%88%86%E5%B8%83%E5%BC%8F/%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81%E7%9A%84%E5%AE%9E%E7%8E%B0/index.html">
+<meta property="og:site_name" content="知识是海洋">
+<meta property="og:description" content="什么是分布式锁说到Redis，我们第一想到的功能就是可以缓存数据，除此之外，Redis因为单进程、性能高的特点，它还经常被用于做分布式锁。 分布式锁，顾名思义，就是分布式项目开发中用到的锁，可以用来控制分布式系统之间同步访问共享资源，一般来说，分布式锁需要满足的特性有这么几点：  1、互斥性：在任何时刻，对于同一条数据，只有一台应用可以获取到分布式锁； 2、高可用性：在分布式场景下，一小部分服务器">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://img-blog.csdnimg.cn/1b4ebdc6c7a74d9d9e749b3705782e9d.png">
+<meta property="article:published_time" content="2022-11-01T14:04:57.996Z">
+<meta property="article:modified_time" content="2022-11-01T14:06:47.670Z">
+<meta property="article:author" content="caicai">
+<meta property="article:tag" content="面试">
+<meta property="article:tag" content="分布式">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://img-blog.csdnimg.cn/1b4ebdc6c7a74d9d9e749b3705782e9d.png"><link rel="shortcut icon" href="/img/R-C.jpg"><link rel="canonical" href="http://cyd217.github.io/2022/11/01/%E5%88%86%E5%B8%83%E5%BC%8F/%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81%E7%9A%84%E5%AE%9E%E7%8E%B0/"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox.min.css" media="print" onload="this.media='all'"><script>const GLOBAL_CONFIG = { 
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":false,"languages":{"hits_empty":"找不到您查询的内容：${query}"}},
+  translate: undefined,
+  noticeOutdate: undefined,
+  highlight: {"plugin":"highlighjs","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false},
+  copy: {
+    success: '复制成功',
+    error: '复制错误',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  date_suffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  source: {
+    justifiedGallery: {
+      js: 'https://cdn.jsdelivr.net/npm/flickr-justified-gallery/dist/fjGallery.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/flickr-justified-gallery/dist/fjGallery.min.css'
+    }
+  },
+  isPhotoFigcaption: false,
+  islazyload: false,
+  isAnchor: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '分布式-分布式锁的实现',
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: true,
+  postUpdate: '2022-11-01 22:06:47'
+}</script><noscript><style type="text/css">
+  #nav {
+    opacity: 1
+  }
+  .justified-gallery img {
+    opacity: 1
+  }
+
+  #recent-posts time,
+  #post-meta time {
+    display: inline !important
+  }
+</style></noscript><script>(win=>{
+    win.saveToLocal = {
+      set: function setWithExpiry(key, value, ttl) {
+        if (ttl === 0) return
+        const now = new Date()
+        const expiryDay = ttl * 86400000
+        const item = {
+          value: value,
+          expiry: now.getTime() + expiryDay,
+        }
+        localStorage.setItem(key, JSON.stringify(item))
+      },
+
+      get: function getWithExpiry(key) {
+        const itemStr = localStorage.getItem(key)
+
+        if (!itemStr) {
+          return undefined
+        }
+        const item = JSON.parse(itemStr)
+        const now = new Date()
+
+        if (now.getTime() > item.expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return item.value
+      }
+    }
+  
+    win.getScript = url => new Promise((resolve, reject) => {
+      const script = document.createElement('script')
+      script.src = url
+      script.async = true
+      script.onerror = reject
+      script.onload = script.onreadystatechange = function() {
+        const loadState = this.readyState
+        if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+        script.onload = script.onreadystatechange = null
+        resolve()
+      }
+      document.head.appendChild(script)
+    })
+  
+      win.activateDarkMode = function () {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      win.activateLightMode = function () {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+      const t = saveToLocal.get('theme')
+    
+          if (t === 'dark') activateDarkMode()
+          else if (t === 'light') activateLightMode()
+        
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        if (asideStatus === 'hide') {
+          document.documentElement.classList.add('hide-aside')
+        } else {
+          document.documentElement.classList.remove('hide-aside')
+        }
+      }
+    
+    const detectApple = () => {
+      if(/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)){
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+    })(window)</script><link rel="stylesheet" href="/css/bg.css"><meta name="generator" content="Hexo 6.3.0"></head><body><div id="web_bg"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img is-center"><img src="/img/R-C.jpg" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="sidebar-site-data site-data is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">40</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">15</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">7</div></a></div><hr/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url('https://img-blog.csdnimg.cn/1b4ebdc6c7a74d9d9e749b3705782e9d.png')"><nav id="nav"><span id="blog_name"><a id="site-name" href="/">知识是海洋</a></span><div id="menus"><div id="search-button"><a class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><a class="site-page"><i class="fas fa-bars fa-fw"></i></a></div></div></nav><div id="post-info"><h1 class="post-title">分布式-分布式锁的实现</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2022-11-01T14:04:57.996Z" title="发表于 2022-11-01 22:04:57">2022-11-01</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2022-11-01T14:06:47.670Z" title="更新于 2022-11-01 22:06:47">2022-11-01</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">字数总计:</span><span class="word-count">2.6k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>8分钟</span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><h1 id="什么是分布式锁"><a href="#什么是分布式锁" class="headerlink" title="什么是分布式锁"></a>什么是分布式锁</h1><p>说到Redis，我们第一想到的功能就是可以缓存数据，除此之外，<strong>Redis因为单进程、性能高的特点，它还经常被用于做分布式锁</strong>。</p>
+<p>分布式锁，顾名思义，就是分布式项目开发中用到的锁，可以用来控制<strong>分布式系统之间同步访问共享资源</strong>，一般来说，分布式锁需要满足的特性有这么几点：</p>
+<ul>
+<li>1、<strong>互斥性</strong>：在任何时刻，对于同一条数据，只有一台应用可以获取到分布式锁；</li>
+<li>2、<strong>高可用性</strong>：在分布式场景下，一小部分服务器宕机不影响正常使用，这种情况就需要将提供分布式锁的服务以集群的方式部署；</li>
+<li>3、<strong>防止锁超时</strong>：如果客户端没有主动释放锁，服务器会在一段时间之后自动释放锁，防止客户端宕机或者网络不可达时产生死锁；</li>
+<li>4、<strong>独占性</strong>：加锁解锁必须由同一台服务器进行，也就是锁的持有者才可以释放锁，不能出现你加的锁，别人给你解锁了；</li>
+<li>5、<strong>可重入性</strong>:一个线程如果获取了锁之后,可以再次对其请求加锁。</li>
+</ul>
+<h1 id="分布式锁常见的三种实现方式"><a href="#分布式锁常见的三种实现方式" class="headerlink" title="分布式锁常见的三种实现方式"></a>分布式锁常见的三种实现方式</h1><ul>
+<li>数据库乐观锁；</li>
+<li>基于Redis的分布式锁；</li>
+<li>基于ZooKeeper的分布式锁。</li>
+</ul>
+<h1 id="第一种-redis实现"><a href="#第一种-redis实现" class="headerlink" title="第一种:redis实现"></a>第一种:redis实现</h1><p><img src="https://img-blog.csdnimg.cn/b8db8409726949c4ab6c9219e3e7f0e7.png" alt="在这里插入图片描述"></p>
+<h2 id="加锁：SET-EX-PX-NX-校验唯一随机值"><a href="#加锁：SET-EX-PX-NX-校验唯一随机值" class="headerlink" title="加锁：SET EX PX NX  + 校验唯一随机值"></a>加锁：SET EX PX NX  + 校验唯一随机值</h2><p><code>Redis</code>分布式锁大部分人都会想到：<code>setnx+lua</code>，或者知道<code>set key value px milliseconds nx</code>。Set 这个命令，目前已经支持这么多参数可选：</p>
+<blockquote>
+<p>SET key value [EX seconds|PX milliseconds] [NX|XX] [KEEPTTL]</p>
+</blockquote>
+<p><code>EX seconds </code>： 将键的过期时间设置为<code> seconds</code> 秒。 执行 <code>SET key value EX seconds </code>的效果等同于执行 <code>SETEX key seconds value</code> 。<br><code>PX milliseconds </code>： 将键的过期时间设置为 <code>milliseconds</code> 毫秒。<br><code>NX</code> ： 只在键不存在时， 才对键进行设置操作。</p>
+<h2 id="解锁"><a href="#解锁" class="headerlink" title="解锁"></a>解锁</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> redis.call(<span class="string">&#x27;get&#x27;</span>, KEYS[1]) == ARGV[1] <span class="keyword">then</span> </span><br><span class="line"> <span class="built_in">return</span> redis.call(<span class="string">&#x27;del&#x27;</span>, KEYS[1]) </span><br><span class="line"><span class="keyword">else</span> </span><br><span class="line">  <span class="built_in">return</span> 0 </span><br><span class="line">end</span><br></pre></td></tr></table></figure>
+
+<p><strong>优点：</strong></p>
+<ul>
+<li>1.<code>set key value px milliseconds nx</code>替代 <code>setnx + expir</code>e 需要分两次执行命令的方式，<strong>保证了原子性</strong>;</li>
+<li>2.<code>value</code>要具有<strong>唯一性</strong>：用来标识这把锁是属于哪个请求加的，自己只能释放了自己的锁；</li>
+<li>3.释放锁时要验证<code>value</code>值，不能误解锁：同时利用了<code>eval</code>命令执行<code>Lua</code>脚本的原子性;</li>
+<li>4.自动释放锁;</li>
+<li>5.相比<strong>数据库和分布式系统zk</strong>的实现，该方案最轻，性能最好;</li>
+</ul>
+<p><strong>缺点</strong></p>
+<ul>
+<li>1.锁过期时间不好评估;</li>
+<li>2.加锁时只作用在一个<code>Redis</code>节点上，即使<code>Redis</code>通过<code>sentinel</code>保证高可用，如果这个<code>master</code>节点由于某些原因发生了<code>主从切换</code>，那么就会出现锁丢失的情况，导致出现<code>多个客户端持有锁</code>的情况，这样就不能实现资源的独享了;</li>
+<li>不支持锁重入，不支持阻塞等待;</li>
+</ul>
+<p>缺点1解决方法：<strong>在加锁时，先设置一个过期时间，然后开启一个守护线程，定时检测这个锁的过期时间，如果快要过期了，操作共享资源还没完成，那么就自动对锁继续续期。</strong></p>
+<h1 id="Redisson框架"><a href="#Redisson框架" class="headerlink" title="Redisson框架"></a>Redisson框架</h1><p><code>redisson</code>保持了<code>简单易用、支持锁重入、支持阻塞等待、Lua脚本原子</code>操作，对主从，哨兵，集群等模式都支持，当然了，单节点模式肯定是支持的。<br><strong>需要特别注意的是</strong>，<code>RedissonLock</code> 同样<strong>没有解决 节点挂掉</strong>的时候，存在<strong>丢失锁的风险</strong>的问题。而现实情况是有一些场景无法容忍的。</p>
+<p><strong>内部逻辑</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/1b4ebdc6c7a74d9d9e749b3705782e9d.png" alt="在这里插入图片描述"><br>只要线程一加锁成功，就会启动一个<code>watch dog</code>看门狗，它是一个后台线程，会每隔<code>10</code>秒检查一下，如果线程1还持有锁，那么就会不断的延长锁key的生存时间。因此，<code>Redisson</code>就是使用<code>Redisson</code>解决了锁过期释放，业务没执行完问题。</p>
+<p>存在问题:</p>
+<ul>
+<li><code>Redis集群</code>发生主从切换的会导致多个客户端同时获得锁;</li>
+<li><code>Redis</code>主从切换期间不保证主从数据的一致性，可能一<code>个客户端在旧的Master</code>获得锁，另一个<code>客户端在新的Master</code>获得锁;</li>
+</ul>
+<h1 id="第二种：zk基于临时节点实现"><a href="#第二种：zk基于临时节点实现" class="headerlink" title="第二种：zk基于临时节点实现"></a>第二种：zk基于临时节点实现</h1><p>所有的客户端<code>/zookeeper_lock/</code>下创建<strong>临时子节点</strong> <code>/zookeeper_lock/lock</code>。Zookeeper保证只有一个客户端能创建成功，为获取锁，同时，所有没有创建成功的客户端要在<code>/zookeeper_lock</code>节点注册一个子节点变更的<code>Watcher</code>监听。</p>
+<p>客户端与zk服务维护了一个session会话，这个会话依赖于定时心跳机制。如果zk长时间收不到客户端的心跳，就认为这个session过期，也会把临时节点删除。<br><img src="https://img-blog.csdnimg.cn/8f0385e764724100a3affe324b08a22b.png" alt="在这里插入图片描述"></p>
+<ul>
+<li>1.客户端1创建临时节点<code>/lock</code>成功拿到了锁。</li>
+<li>2.客户端1发生长时间<code>GC</code>。</li>
+<li>3.客户端1无法给<code>zk</code>发送命令，zk将临时节点删除。</li>
+<li>4.客户端2拿到临时节点<code>/lock</code>，加锁成功。</li>
+<li>5.客户端1<code>GC</code>结束，锁冲突。<br>可见及时<code>zk</code>也不能保证网络延迟，<code>GC</code>等情况下的安全性。所以分布式锁，在极端情况下，不一定是安全的。</li>
+</ul>
+<p>优点：</p>
+<ul>
+<li><code>zk</code>不需要考虑锁过期的问题，而且客户端出现异常，会自动释放锁。</li>
+<li>基于<code>zk</code>集群，只要集群中有半数以上的机器存活，就可以对外提供服务，可以避免单点故障问题。</li>
+</ul>
+<p>缺点：</p>
+<ul>
+<li>性能不如redis。</li>
+<li>客户端于zk长时间失联，锁被释放问题。</li>
+<li>部署成本高。</li>
+</ul>
+<h1 id="Redlock"><a href="#Redlock" class="headerlink" title="Redlock"></a>Redlock</h1><p><img src="https://img-blog.csdnimg.cn/75a907421f224f28a50a8de62c0a7a07.png" alt="在这里插入图片描述"></p>
+<ul>
+<li>不需要部署主从，只需要部署主库。</li>
+<li>部署多个。</li>
+</ul>
+<p>Redlock 具体如何使用呢？</p>
+<ul>
+<li>客户端先获取<code>当前时间戳T1</code>；</li>
+<li>客户端<strong>依次</strong>向这<code>5</code>个 <code>Redis</code> 实例发起加锁请求，且每个请求会设置超时时间<code>（毫秒级，要远小于锁的有效时间）</code>，如果某一个实例加锁失败，就立即向下一个<code>Redis</code>实例申请加锁；</li>
+<li>如果<code>客户端从 &gt;=3 个（大多数）</code>以上<code>Redis</code>实例加锁成功，则再次<code>获取当前时间戳T2</code>，如果 <code>T2 - T1 &lt; 锁的过期时间</code>，此时，认为客户端加锁成功，否则认为加锁失败；</li>
+<li>加锁成功，去操作共享资源（例如修改 MySQL 某一行，或发起一个 API 请求）;</li>
+<li>加锁失败，向<code>全部节点</code>发起释放锁请求;</li>
+</ul>
+<p> <strong>为什么要在多个实例上加锁？</strong><br>本质上是为了容错，部分实例异常宕机，剩余的实例加锁成功，整个锁服务依旧可用。<br><strong>为什么大多数加锁成功，才算成功？</strong><br>多个 Redis 实例一起来用，其实就组成了一个分布式系统。在分布式系统中，总会出现<strong>异常节点</strong>，所以，在谈论分布式系统问题时，需要考虑异常节点达到多少个，也依旧不会影响整个系统的正确性。</p>
+<p><strong>为什么释放锁，要操作所有节点？</strong><br>释放锁时，不管之前有没有加锁成功，需要释放所有节点锁，以保证清理节点上残留的锁。</p>
+<h1 id="第三种：基于数据库表插入"><a href="#第三种：基于数据库表插入" class="headerlink" title="第三种：基于数据库表插入"></a>第三种：基于数据库表插入</h1><h2 id="基于数据库表插入"><a href="#基于数据库表插入" class="headerlink" title="基于数据库表插入"></a>基于数据库表插入</h2><ul>
+<li>通过对表记录的创建锁id的唯一约束，多个请求同时提交到数据库的话，</li>
+<li>数据库会保证只有一个操作可以成功，那么我们就可以认为操作成功的那个线程获得了该方法的锁。</li>
+</ul>
+<p><strong>获取锁</strong></p>
+<ul>
+<li>插入数据库记录，如果插入成功，表示获得锁；</li>
+<li>插入失败，不断循环重试插入，插入成功，获得锁；</li>
+</ul>
+<p><strong>高可用机制</strong></p>
+<ul>
+<li>基于数据库集群，数据库故障自动主从切换；</li>
+<li>获得锁的客户端定时更新数据库记录来刷新锁的存活时间，再基于定时线程定时把已超过存活时间的锁清理掉；</li>
+</ul>
+<h2 id="基于数据库排他锁"><a href="#基于数据库排他锁" class="headerlink" title="基于数据库排他锁"></a>基于数据库排他锁</h2><p>思路：基于InnoDB数据库更新时获取排他锁(行锁)<br><img src="https://img-blog.csdnimg.cn/0cb1a8625de24585a9d3f82bc95132cf.png" alt="在这里插入图片描述"><br>获得锁：在查询语句后面增加for update，数据库会在查询过程中给数据库表增加排他锁。<br>释放锁：<br><img src="https://img-blog.csdnimg.cn/75864b3dd1654b979085866afe1e3d30.png" alt="在这里插入图片描述"><br>优点：使用这种方式，服务宕机之后数据库会自己把锁释放掉。<br>缺点：</p>
+<ul>
+<li>MySQL可能不走索引问题虽然对lock_id使用了唯一索引，并且显示使用for update来使用行级锁。但MySql会对查询进行优化，即便在条件中使用了索引字段，是否使用索引来检索是由 MySQL 通过判断不同执行计划的代价来决定的，如果 MySQL 认为全表扫效率更高，比如对一些很小的表，它就不会使用索引，这种情况下 InnoDB 将使用表锁，而不是行锁，导致多个不同类别锁变成一个。</li>
+<li>数据库连接占用问题，使用排他锁来进行分布式锁的lock，那么一个排他锁长时间不提交，就会占用数据库连接。一旦类似的连接变得多了，就可能把数据库连接池撑爆。</li>
+</ul>
+<h2 id="基于数据库乐观锁"><a href="#基于数据库乐观锁" class="headerlink" title="基于数据库乐观锁"></a>基于数据库乐观锁</h2><p>原理：乐观锁总是认为不会产生并发问题；每次取锁的时候总认为不会有其他的线程对数据进行修改，因此不会上锁，但是在更新的时候会判断其他线程在这之前有没有对数据进行修改；<br>实现：</p>
+<ul>
+<li>version方式：<ul>
+<li>一般是在数据表中加上一个数据版本号version字段，表示数据被修改的次数，当数据被修改时，version值会加一。</li>
+<li>当线程A要更新数据值时，在读取数据的同时也会读取version值，在提交更新时，若刚才读取到的version值为当前数据库中的version值相等时才更新，否则重试更新操作，直到更新成功。</li>
+</ul>
+</li>
+<li>cas方式：当需要更新时，判断当前内存值与之前取到的值是否相等，若相等，则用新值更新，若失败则重试，一般情况下是一个自旋操作，即不断的重试。</li>
+</ul>
+<h1 id="总结："><a href="#总结：" class="headerlink" title="总结："></a>总结：</h1><p>从性能角度（从高到低）：缓存 &gt; Zookeeper &gt;&#x3D; 数据库<br>从可靠性角度（从高到低）：Zookeeper &gt; 缓存 &gt; 数据库</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta">文章作者: </span><span class="post-copyright-info"><a href="http://cyd217.github.io">caicai</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta">文章链接: </span><span class="post-copyright-info"><a href="http://cyd217.github.io/2022/11/01/%E5%88%86%E5%B8%83%E5%BC%8F/%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81%E7%9A%84%E5%AE%9E%E7%8E%B0/">http://cyd217.github.io/2022/11/01/%E5%88%86%E5%B8%83%E5%BC%8F/%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81%E7%9A%84%E5%AE%9E%E7%8E%B0/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta">版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来自 <a href="http://cyd217.github.io" target="_blank">知识是海洋</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E9%9D%A2%E8%AF%95/">面试</a><a class="post-meta__tags" href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a></div><div class="post_share"><div class="social-share" data-image="https://img-blog.csdnimg.cn/1b4ebdc6c7a74d9d9e749b3705782e9d.png" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><div class="prev-post pull-left"><a href="/2022/11/01/redis/redis%E6%80%A7%E8%83%BD%E5%88%86%E6%9E%90/"><img class="prev-cover" src="https://img-blog.csdnimg.cn/4d1386aee574413882e7bb1e6ebfb336.png" onerror="onerror=null;src='/img/404.jpg'" alt="cover of previous post"><div class="pagination-info"><div class="label">上一篇</div><div class="prev_info">实战分析-排查Redis性能问题</div></div></a></div><div class="next-post pull-right"><a href="/2022/11/01/redis/Redis%20%E9%AB%98%E6%80%A7%E8%83%BD%E4%B9%8B%20IO%20%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8/"><img class="next-cover" src="https://img-blog.csdnimg.cn/b8e978e3a28842aebbeab9cbbbde8782.png" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post"><div class="pagination-info"><div class="label">下一篇</div><div class="next_info">Redis 高性能之 IO 多路复用</div></div></a></div></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><div><a href="/2022/10/30/redis/redis-%E4%B8%89%E5%A4%A7%E7%BC%93%E5%AD%98%E9%97%AE%E9%A2%98/" title="redis-三大缓存问题"><img class="cover" src="https://img-blog.csdnimg.cn/1a68c64a4059400b806be6b21c51159f.png" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2022-10-30</div><div class="title">redis-三大缓存问题</div></div></a></div><div><a href="/2022/10/27/redis/redis-%E5%93%A8%E5%85%B5%E6%A8%A1%E5%BC%8F/" title="redis-哨兵模式"><img class="cover" src="https://img-blog.csdnimg.cn/e80894f5cddd4a198ac1d028ec03f1e2.png" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2022-10-27</div><div class="title">redis-哨兵模式</div></div></a></div><div><a href="/2022/10/27/redis/redis-%E6%8C%81%E4%B9%85%E5%8C%96%E8%BF%9B%E9%98%B6/" title="redis-持久化进阶篇-一致性问题"><img class="cover" src="https://img-blog.csdnimg.cn/141bfe73ae614f42a770c39b3999cf38.png" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2022-10-27</div><div class="title">redis-持久化进阶篇-一致性问题</div></div></a></div><div><a href="/2022/10/27/redis/redis-%E6%8C%81%E4%B9%85%E5%8C%96%E6%96%B9%E5%BC%8F/" title="redis-持久化基础篇"><img class="cover" src="https://img-blog.csdnimg.cn/6cc66ba03bac44deb4b75b034bbdb358.png" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2022-10-27</div><div class="title">redis-持久化基础篇</div></div></a></div><div><a href="/2022/11/01/redis/redis%E4%BA%8B%E5%8A%A1/" title="简单说明redis事务"><img class="cover" src="https://img-blog.csdnimg.cn/1a68c64a4059400b806be6b21c51159f.png" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2022-11-01</div><div class="title">简单说明redis事务</div></div></a></div><div><a href="/2022/10/27/%E7%BD%91%E7%BB%9C/%E5%BF%85%E9%97%AE%E7%9A%84%E4%B8%89%E6%AC%A1%E6%8F%A1%E6%89%8B%EF%BC%8C%E5%9B%9B%E6%AC%A1%E6%8C%A5%E6%89%8B/" title="面试必须要明白的三次握手，四次挥手"><img class="cover" src="https://img-blog.csdnimg.cn/c446286813fe48a3a3c7fe20ddd29efd.png" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2022-10-27</div><div class="title">面试必须要明白的三次握手，四次挥手</div></div></a></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="is-center"><div class="avatar-img"><img src="/img/R-C.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info__name">caicai</div><div class="author-info__description">代码和我，总有一个可以跑！</div></div><div class="card-info-data site-data is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">40</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">15</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">7</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/cyd217"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons is-center"><a class="social-icon" href="https://github.com/cyd217" target="_blank" title="Github"><i class="fab fa-github"></i></a></div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%BB%80%E4%B9%88%E6%98%AF%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81"><span class="toc-number">1.</span> <span class="toc-text">什么是分布式锁</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81%E5%B8%B8%E8%A7%81%E7%9A%84%E4%B8%89%E7%A7%8D%E5%AE%9E%E7%8E%B0%E6%96%B9%E5%BC%8F"><span class="toc-number">2.</span> <span class="toc-text">分布式锁常见的三种实现方式</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%AC%AC%E4%B8%80%E7%A7%8D-redis%E5%AE%9E%E7%8E%B0"><span class="toc-number">3.</span> <span class="toc-text">第一种:redis实现</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8A%A0%E9%94%81%EF%BC%9ASET-EX-PX-NX-%E6%A0%A1%E9%AA%8C%E5%94%AF%E4%B8%80%E9%9A%8F%E6%9C%BA%E5%80%BC"><span class="toc-number">3.1.</span> <span class="toc-text">加锁：SET EX PX NX  + 校验唯一随机值</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%A7%A3%E9%94%81"><span class="toc-number">3.2.</span> <span class="toc-text">解锁</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Redisson%E6%A1%86%E6%9E%B6"><span class="toc-number">4.</span> <span class="toc-text">Redisson框架</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%AC%AC%E4%BA%8C%E7%A7%8D%EF%BC%9Azk%E5%9F%BA%E4%BA%8E%E4%B8%B4%E6%97%B6%E8%8A%82%E7%82%B9%E5%AE%9E%E7%8E%B0"><span class="toc-number">5.</span> <span class="toc-text">第二种：zk基于临时节点实现</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Redlock"><span class="toc-number">6.</span> <span class="toc-text">Redlock</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%AC%AC%E4%B8%89%E7%A7%8D%EF%BC%9A%E5%9F%BA%E4%BA%8E%E6%95%B0%E6%8D%AE%E5%BA%93%E8%A1%A8%E6%8F%92%E5%85%A5"><span class="toc-number">7.</span> <span class="toc-text">第三种：基于数据库表插入</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9F%BA%E4%BA%8E%E6%95%B0%E6%8D%AE%E5%BA%93%E8%A1%A8%E6%8F%92%E5%85%A5"><span class="toc-number">7.1.</span> <span class="toc-text">基于数据库表插入</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9F%BA%E4%BA%8E%E6%95%B0%E6%8D%AE%E5%BA%93%E6%8E%92%E4%BB%96%E9%94%81"><span class="toc-number">7.2.</span> <span class="toc-text">基于数据库排他锁</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9F%BA%E4%BA%8E%E6%95%B0%E6%8D%AE%E5%BA%93%E4%B9%90%E8%A7%82%E9%94%81"><span class="toc-number">7.3.</span> <span class="toc-text">基于数据库乐观锁</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%80%BB%E7%BB%93%EF%BC%9A"><span class="toc-number">8.</span> <span class="toc-text">总结：</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2022/11/01/redis/redis-%E4%B8%BB%E4%BB%8E%E6%A8%A1%E5%BC%8F/" title="redis-主从"><img src="https://img-blog.csdnimg.cn/acb212b1d4754107bde6140f42cc9550.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="redis-主从"/></a><div class="content"><a class="title" href="/2022/11/01/redis/redis-%E4%B8%BB%E4%BB%8E%E6%A8%A1%E5%BC%8F/" title="redis-主从">redis-主从</a><time datetime="2022-11-01T14:17:07.587Z" title="发表于 2022-11-01 22:17:07">2022-11-01</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2022/11/01/redis/redis%E4%BA%8B%E5%8A%A1/" title="简单说明redis事务"><img src="https://img-blog.csdnimg.cn/1a68c64a4059400b806be6b21c51159f.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="简单说明redis事务"/></a><div class="content"><a class="title" href="/2022/11/01/redis/redis%E4%BA%8B%E5%8A%A1/" title="简单说明redis事务">简单说明redis事务</a><time datetime="2022-11-01T14:13:11.363Z" title="发表于 2022-11-01 22:13:11">2022-11-01</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2022/11/01/redis/redis%E6%80%A7%E8%83%BD%E5%88%86%E6%9E%90/" title="实战分析-排查Redis性能问题"><img src="https://img-blog.csdnimg.cn/4d1386aee574413882e7bb1e6ebfb336.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="实战分析-排查Redis性能问题"/></a><div class="content"><a class="title" href="/2022/11/01/redis/redis%E6%80%A7%E8%83%BD%E5%88%86%E6%9E%90/" title="实战分析-排查Redis性能问题">实战分析-排查Redis性能问题</a><time datetime="2022-11-01T14:09:59.275Z" title="发表于 2022-11-01 22:09:59">2022-11-01</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2022/11/01/%E5%88%86%E5%B8%83%E5%BC%8F/%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81%E7%9A%84%E5%AE%9E%E7%8E%B0/" title="分布式-分布式锁的实现"><img src="https://img-blog.csdnimg.cn/1b4ebdc6c7a74d9d9e749b3705782e9d.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="分布式-分布式锁的实现"/></a><div class="content"><a class="title" href="/2022/11/01/%E5%88%86%E5%B8%83%E5%BC%8F/%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81%E7%9A%84%E5%AE%9E%E7%8E%B0/" title="分布式-分布式锁的实现">分布式-分布式锁的实现</a><time datetime="2022-11-01T14:04:57.996Z" title="发表于 2022-11-01 22:04:57">2022-11-01</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2022/11/01/redis/Redis%20%E9%AB%98%E6%80%A7%E8%83%BD%E4%B9%8B%20IO%20%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8/" title="Redis 高性能之 IO 多路复用"><img src="https://img-blog.csdnimg.cn/b8e978e3a28842aebbeab9cbbbde8782.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Redis 高性能之 IO 多路复用"/></a><div class="content"><a class="title" href="/2022/11/01/redis/Redis%20%E9%AB%98%E6%80%A7%E8%83%BD%E4%B9%8B%20IO%20%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8/" title="Redis 高性能之 IO 多路复用">Redis 高性能之 IO 多路复用</a><time datetime="2022-11-01T13:44:09.661Z" title="发表于 2022-11-01 21:44:09">2022-11-01</time></div></div></div></div></div></div></main><footer id="footer" style="background-image: url('https://img-blog.csdnimg.cn/1b4ebdc6c7a74d9d9e749b3705782e9d.png')"><div id="footer-wrap"><div class="copyright">&copy;2020 - 2022 By caicai</div><div class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly</a></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="浅色和深色模式转换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside_config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><i class="fas fa-arrow-up"></i></button></div></div><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><span id="loading-status"></span><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="is-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据库加载中</span></div><div class="search-wrap"><div id="local-search-input"><div class="local-search-box"><input class="local-search-box--input" placeholder="搜索文章" type="text"/></div></div><hr/><div id="local-search-results"></div></div></div><div id="search-mask"></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox.umd.min.js"></script><script src="/js/search/local-search.js"></script><div class="js-pjax"></div><script type="text/javascript" src="/js/hourse.js"></script><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/dist/fireworks.min.js"></script></div></body></html>
